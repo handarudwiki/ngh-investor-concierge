@@ -68,7 +68,7 @@ export function Sidebar() {
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
-    <nav className="flex h-full w-14 shrink-0 flex-col bg-sidebar text-sidebar-ink lg:w-56">
+    <nav className="no-print flex h-full w-14 shrink-0 flex-col bg-sidebar text-sidebar-ink lg:w-56">
       <Link href="/" className="flex h-14 items-center gap-2.5 px-3.5 lg:px-4">
         <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-accent font-display text-lg text-ink-inverse italic">
           n
