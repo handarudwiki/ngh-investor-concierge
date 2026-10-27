@@ -470,6 +470,7 @@ function leads(now: number): Lead[] {
       stage: "new",
       topics: ["Investor programme", "Prices"],
       unread: 0,
+      unanswered: ["Is there a gym or co-working space in the complex?"],
       lastMessageAt: iso(now, -45),
       nextFollowUp: iso(now, DAY - 50),
       messages: thread("l5", now, [
@@ -480,6 +481,8 @@ function leads(now: number): Lead[] {
         ["bot", 46.6, "Thanks for being upfront. I'll send you our project overview and keep you posted on new releases. What's the best email for that?"],
         ["lead", 45, "emma.j@example.com.au"],
         ["bot", 44.7, "Done — the overview is on its way. Follow-ups will come from the NGH domain, and you can opt out at any time."],
+        ["lead", 44.5, "Is there a gym or co-working space in the complex?"],
+        ["bot", 44.3, "Good question — I don't want to guess, so I'll check with the team and an advisor will get back to you."],
       ]),
     },
     {
