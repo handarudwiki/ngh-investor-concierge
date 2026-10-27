@@ -106,7 +106,7 @@ const kb = (now: number): KbArticle[] => {
       id: "kb-leasehold",
       category: "ownership",
       title: "Leasehold vs freehold for foreign buyers",
-      keywords: ["leasehold", "freehold", "ownership", "own", "hak milik", "sewa", "erfpacht", "eigendom", "лизхолд", "фрихолд", "собственность", "propiedad", "arrendamiento"],
+      keywords: ["leasehold", "freehold", "ownership", "hak milik", "hak sewa", "kepemilikan", "erfpacht", "eigendom", "лизхолд", "фрихолд", "собственность", "propiedad", "arrendamiento"],
       body: {
         en: "Foreign individuals can't hold freehold (Hak Milik) title in Indonesia. Most foreign buyers purchase a registered leasehold — Uluwatu Paradise units are offered on a 30-year lease with an extension option. A company structure (PT PMA) can hold other title types. This is a general explanation, not legal advice: our legal advisor walks every buyer through the structure that fits them.",
         nl: "Buitenlandse particulieren kunnen in Indonesië geen volledig eigendom (Hak Milik) bezitten. De meeste buitenlandse kopers kopen een geregistreerde leasehold — units in Uluwatu Paradise worden aangeboden met een lease van 30 jaar met verlengingsoptie. Een bedrijfsstructuur (PT PMA) kan andere eigendomsvormen houden. Dit is een algemene uitleg, geen juridisch advies: onze juridisch adviseur bespreekt met elke koper welke structuur past.",
@@ -161,7 +161,7 @@ const kb = (now: number): KbArticle[] => {
       id: "kb-prices",
       category: "pricing",
       title: "Prices and availability",
-      keywords: ["price", "prices", "cost", "how much", "harga", "prijs", "kosten", "цена", "стоимость", "precio", "cuánto", "available", "availability"],
+      keywords: ["price", "prices", "cost", "how much", "cheapest", "harga", "termurah", "prijs", "kosten", "kost", "goedkoopste", "цена", "стоимость", "стоит", "сколько", "precio", "cuánto", "cuesta", "available", "availability"],
       body: {
         en: "Current units start from around USD 189,000 for an ocean studio, with 2–3 bedroom villas from USD 425,000 and a 4-bedroom cliff villa at USD 1.25M. Prices are leasehold (30 years) and subject to availability.",
         nl: "Huidige units beginnen rond USD 189.000 voor een ocean studio; villa's met 2–3 slaapkamers vanaf USD 425.000 en een cliff villa met 4 slaapkamers voor USD 1,25 mln. Prijzen zijn leasehold (30 jaar) en onder voorbehoud van beschikbaarheid.",

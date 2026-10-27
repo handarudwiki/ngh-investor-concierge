@@ -5,29 +5,10 @@ import { CalendarCheck } from "lucide-react";
 import { Avatar, Button, Dialog } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { bookCall } from "@/lib/actions";
-import { routeLead } from "@/lib/rules";
+import { advisorLoad, nextSlots, routeLead } from "@/lib/rules";
 import { useNow, useStore } from "@/lib/store";
 import { clock, day } from "@/lib/format";
 import type { Lead } from "@/lib/types";
-
-/** Next N weekday slots in the advisor's Bali hours, shown in the lead's time zone (FR-11). */
-export function nextSlots(now: number, count = 6) {
-  const out: string[] = [];
-  // Advisor availability: 09:00–17:00 WITA (UTC+8) → 01:00–09:00 UTC.
-  const hoursUtc = [1, 3, 6, 8];
-  const d = new Date(now);
-  d.setUTCMinutes(0, 0, 0);
-  for (let i = 0; i < 14 * 24 && out.length < count; i++) {
-    d.setUTCHours(d.getUTCHours() + 1);
-    const wita = new Date(d.getTime() + 8 * 3600e3);
-    const weekday = wita.getUTCDay();
-    if (weekday === 0 || weekday === 6) continue;
-    if (!hoursUtc.includes(d.getUTCHours())) continue;
-    if (d.getTime() - now < 2 * 3600e3) continue;
-    out.push(d.toISOString());
-  }
-  return out;
-}
 
 export function BookCallDialog({ lead, open, onClose }: { lead: Lead; open: boolean; onClose: () => void }) {
   const now = useNow();
@@ -36,7 +17,7 @@ export function BookCallDialog({ lead, open, onClose }: { lead: Lead; open: bool
   const slots = useMemo(() => nextSlots(now), [now]);
   const [picked, setPicked] = useState<string>();
   const advisor =
-    advisors.find((a) => a.id === lead.advisorId) ?? routeLead(lead, advisors, leads);
+    advisors.find((a) => a.id === lead.advisorId) ?? routeLead(lead, advisors, advisorLoad(leads));
 
   return (
     <Dialog

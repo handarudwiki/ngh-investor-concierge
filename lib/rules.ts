@@ -39,9 +39,12 @@ export function missingFields(lead: Partial<Lead>) {
  * Route by language, then project, then score: Hot leads go to a senior
  * advisor when one speaks the language; ties broken by fewest open leads.
  */
-export function routeLead(lead: Pick<Lead, "language" | "project" | "score">, advisors: Advisor[], leads: Lead[]) {
-  const open = (id: string) =>
-    leads.filter((l) => l.advisorId === id && l.stage !== "won" && l.stage !== "lost").length;
+export function routeLead(
+  lead: Pick<Lead, "language" | "project" | "score">,
+  advisors: Advisor[],
+  load: Record<string, number>,
+) {
+  const open = (id: string) => load[id] ?? 0;
   const byLang = advisors.filter((a) => a.role === "advisor" && a.languages.includes(lead.language));
   const pool = byLang.length ? byLang : advisors.filter((a) => a.role === "advisor" && a.languages.includes("en"));
   const byProject = pool.filter((a) => a.projects.includes(lead.project));
@@ -49,6 +52,35 @@ export function routeLead(lead: Pick<Lead, "language" | "project" | "score">, ad
   const preferred = lead.score === "hot" ? candidates.filter((a) => a.senior) : [];
   const final = preferred.length ? preferred : candidates;
   return [...final].sort((a, b) => open(a.id) - open(b.id))[0];
+}
+
+/** Open leads per advisor, the input routeLead balances on. */
+export function advisorLoad(leads: Lead[]) {
+  const load: Record<string, number> = {};
+  for (const l of leads) {
+    if (l.advisorId && l.stage !== "won" && l.stage !== "lost") load[l.advisorId] = (load[l.advisorId] ?? 0) + 1;
+  }
+  return load;
+}
+
+/**
+ * Next weekday Calendly-style slots in the advisors' Bali hours
+ * (09:00–17:00 WITA = 01:00–09:00 UTC), at least 2 hours out (FR-11).
+ */
+export function nextSlots(now: number, count = 6) {
+  const out: string[] = [];
+  const hoursUtc = [1, 3, 6, 8];
+  const d = new Date(now);
+  d.setUTCMinutes(0, 0, 0);
+  for (let i = 0; i < 14 * 24 && out.length < count; i++) {
+    d.setUTCHours(d.getUTCHours() + 1);
+    const weekday = new Date(d.getTime() + 8 * 3600e3).getUTCDay();
+    if (weekday === 0 || weekday === 6) continue;
+    if (!hoursUtc.includes(d.getUTCHours())) continue;
+    if (d.getTime() - now < 2 * 3600e3) continue;
+    out.push(d.toISOString());
+  }
+  return out;
 }
 
 export interface Scenario {

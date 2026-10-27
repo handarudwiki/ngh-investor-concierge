@@ -4,7 +4,7 @@
 // automation from the BRD and writes an audit entry where the NFRs ask for one.
 
 import { getState, setState } from "./store";
-import { isQualified, matchUnits, routeLead, scoreLead } from "./rules";
+import { advisorLoad, isQualified, matchUnits, routeLead, scoreLead } from "./rules";
 import { stageLabel } from "./labels";
 import type {
   AuditEntry,
@@ -159,7 +159,7 @@ export function generateBrief(leadId: string) {
 export function bookCall(leadId: string, at: string) {
   setState((s) => {
     const lead = s.leads.find((l) => l.id === leadId)!;
-    const advisor = lead.advisorId ?? routeLead(lead, s.advisors, s.leads)?.id;
+    const advisor = lead.advisorId ?? routeLead(lead, s.advisors, advisorLoad(s.leads))?.id;
     const next = patchLead(s, leadId, (l) => ({
       ...l,
       advisorId: advisor,
@@ -298,4 +298,17 @@ export function saveTemplate(t: Template) {
 
 export function switchUser(advisorId: string) {
   setState((s) => ({ ...s, me: advisorId }));
+}
+
+export function createLead(lead: Lead) {
+  setState((s) => ({ ...s, leads: [lead, ...s.leads] }));
+}
+
+/** Apply a concierge turn or any other batched change to one lead. */
+export function editLead(leadId: string, fn: (l: Lead) => Lead) {
+  setState((s) => patchLead(s, leadId, fn));
+}
+
+export function newMessage(author: Message["author"], text: string, extra?: Partial<Message>) {
+  return msg(author, text, extra);
 }

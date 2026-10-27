@@ -92,6 +92,8 @@ export interface Lead {
   /** Topics the lead asked about, for the advisor summary (FR-14). */
   topics: string[];
   objections: string[];
+  /** Questions the concierge couldn't answer from the KB (FR-03, FR-20). */
+  unanswered?: string[];
   briefGeneratedAt?: string;
   unitIds: string[];
   booking?: Booking;
