@@ -34,6 +34,22 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: boolean;
 }
 
+/** Button styling for elements that aren't buttons, e.g. a Next.js <Link>. */
+export function buttonStyles({
+  variant = "secondary",
+  size = "md",
+  icon,
+  className,
+}: Pick<ButtonProps, "variant" | "size" | "icon" | "className"> = {}) {
+  return cn(
+    "inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap transition-colors select-none",
+    "disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+    variants[variant],
+    icon ? iconSizes[size] : sizes[size],
+    className,
+  );
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { variant = "secondary", size = "md", icon, className, type = "button", ...props },
   ref,
@@ -42,13 +58,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       type={type}
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap transition-colors select-none",
-        "disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
-        variants[variant],
-        icon ? iconSizes[size] : sizes[size],
-        className,
-      )}
+      className={buttonStyles({ variant, size, icon, className })}
       {...props}
     />
   );

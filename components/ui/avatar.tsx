@@ -16,7 +16,7 @@ function hash(s: string) {
 }
 
 export function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const parts = name.trim().split(/\s+/).filter((p) => /^\p{L}/u.test(p));
   if (parts.length === 0) return "?";
   return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }

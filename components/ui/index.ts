@@ -1,4 +1,4 @@
-export { Button, type ButtonProps } from "./button";
+export { Button, buttonStyles, type ButtonProps } from "./button";
 export { Badge, Count, type Tone } from "./badge";
 export { Avatar, BotAvatar, initials } from "./avatar";
 export { Card, CardHeader, CardBody } from "./card";
