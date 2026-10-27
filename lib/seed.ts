@@ -373,6 +373,7 @@ function leads(now: number): Lead[] {
       topics: ["Prices", "Cliff villa", "Discount"],
       objections: ["Asked for a discount on the cliff villa"],
       unitIds: ["u6"],
+      nextFollowUp: iso(now, 1380),
       lastMessageAt: iso(now, -6),
       messages: thread("l2", now, [
         ["system", 40, "Website chat started on uluwatuparadise.com/villas"],
@@ -406,6 +407,7 @@ function leads(now: number): Lead[] {
       unread: 1,
       topics: ["Visit", "Payment plan"],
       unitIds: ["u3"],
+      nextFollowUp: iso(now, 1200),
       lastMessageAt: iso(now, -25),
       followUpStep: 0,
       messages: thread("l3", now, [
@@ -494,6 +496,7 @@ function leads(now: number): Lead[] {
       unread: 1,
       topics: ["Tax"],
       escalation: "Tax question",
+      nextFollowUp: iso(now, 1380),
       lastMessageAt: iso(now, -12),
       messages: thread("l6", now, [
         ["system", 15, "Website chat started on uluwatuparadise.com/"],
@@ -698,6 +701,7 @@ function leads(now: number): Lead[] {
       topics: ["Rental yields", "Rental management"],
       unitIds: ["u3"],
       briefGeneratedAt: iso(now, -2 * 60),
+      nextFollowUp: iso(now, 1320),
       lastMessageAt: iso(now, -95),
       messages: thread("l13", now, [
         ["system", 2.2 * 60, "New WhatsApp conversation · source: Meta ad “EN Investor Oct”"],
@@ -719,6 +723,7 @@ function leads(now: number): Lead[] {
       score: "cold",
       stage: "new",
       topics: ["Company"],
+      nextFollowUp: iso(now, 1020),
       lastMessageAt: iso(now, -6.8 * 60),
       messages: thread("l14", now, [
         ["lead", 7 * 60, "Selamat malam, NGH ini developer dari mana ya?"],
