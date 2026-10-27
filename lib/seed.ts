@@ -523,7 +523,7 @@ function leads(now: number): Lead[] {
       timeline: "3-6m",
       purpose: "rent_out",
       ownership: "undecided",
-      financing: "cash",
+      financing: "undecided",
       score: "warm",
       stage: "qualified",
       advisorId: "a1",

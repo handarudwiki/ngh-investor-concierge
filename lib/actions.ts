@@ -7,6 +7,7 @@ import { getState, setState } from "./store";
 import { advisorLoad, isQualified, matchUnits, routeLead, scoreLead } from "./rules";
 import { stageLabel } from "./labels";
 import type {
+  Advisor,
   AuditEntry,
   Lead,
   Message,
@@ -311,4 +312,12 @@ export function editLead(leadId: string, fn: (l: Lead) => Lead) {
 
 export function newMessage(author: Message["author"], text: string, extra?: Partial<Message>) {
   return msg(author, text, extra);
+}
+
+export function saveAdvisor(advisor: Advisor) {
+  setState((s) => ({
+    ...s,
+    advisors: s.advisors.map((a) => (a.id === advisor.id ? advisor : a)),
+    audit: audit(s, `Updated routing for ${advisor.name}`),
+  }));
 }
