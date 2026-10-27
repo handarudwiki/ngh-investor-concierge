@@ -11,6 +11,7 @@ import type {
   Template,
   Unit,
 } from "./types";
+import { nextSlots } from "./rules";
 
 export const PROJECT = "Uluwatu Paradise";
 /** Fixed reference time for server rendering; the client reseeds relative to its own clock. */
@@ -332,7 +333,7 @@ function leads(now: number): Lead[] {
       objections: ["Wants clarity on lease extension terms"],
       unitIds: ["u4"],
       briefGeneratedAt: iso(now, -10 * 60),
-      booking: { at: slot(now, 90), advisorId: "a1", timezone: "Europe/Amsterdam", remindersSent: ["24h"] },
+      booking: { at: nextSlots(now, 1)[0], advisorId: "a1", timezone: "Europe/Amsterdam", remindersSent: ["24h"] },
       lastMessageAt: iso(now, -9.5 * 60),
       messages: thread("l1", now, [
         ["system", 11 * 60, "New WhatsApp conversation · source: Meta ad “NL Villas Oct”"],
@@ -638,7 +639,7 @@ function leads(now: number): Lead[] {
       topics: ["Rental yields", "Process"],
       unitIds: ["u4"],
       briefGeneratedAt: iso(now, -3.8 * 60),
-      booking: { at: slot(now, 20 * 60), advisorId: "a4", timezone: "America/Mexico_City", remindersSent: [] },
+      booking: { at: nextSlots(now, 3)[2], advisorId: "a4", timezone: "America/Mexico_City", remindersSent: [] },
       lastMessageAt: iso(now, -3.7 * 60),
       messages: thread("l11", now, [
         ["lead", 4 * 60, "Hola, ¿cuál es el proceso de compra para extranjeros?"],
