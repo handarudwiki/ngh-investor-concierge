@@ -1,3 +1,6 @@
+/** Advisors work from Bali (WITA, UTC+8); default all team-facing times to it. */
+export const TEAM_TZ = "Asia/Makassar";
+
 export function relTime(iso: string, now: number) {
   const diff = now - Date.parse(iso);
   const future = diff < 0;
@@ -7,12 +10,12 @@ export function relTime(iso: string, now: number) {
   else if (m < 60) out = `${m}m`;
   else if (m < 60 * 24) out = `${Math.round(m / 60)}h`;
   else if (m < 60 * 24 * 7) out = `${Math.round(m / 1440)}d`;
-  else out = new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  else out = new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: TEAM_TZ });
   if (out === "now") return out;
   return future ? `in ${out}` : out;
 }
 
-export function dateTime(iso: string, timeZone?: string) {
+export function dateTime(iso: string, timeZone: string = TEAM_TZ) {
   return new Date(iso).toLocaleString("en-GB", {
     weekday: "short",
     day: "numeric",
@@ -23,11 +26,11 @@ export function dateTime(iso: string, timeZone?: string) {
   });
 }
 
-export function clock(iso: string, timeZone?: string) {
+export function clock(iso: string, timeZone: string = TEAM_TZ) {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone });
 }
 
-export function day(iso: string, timeZone?: string) {
+export function day(iso: string, timeZone: string = TEAM_TZ) {
   return new Date(iso).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone });
 }
 
