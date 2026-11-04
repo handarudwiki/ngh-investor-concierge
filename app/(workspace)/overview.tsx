@@ -7,6 +7,7 @@ import {
   ArrowRight,
   CalendarCheck,
   Clock,
+  Flag,
   Flame,
   Link2,
   MessageSquareReply,
@@ -18,6 +19,7 @@ import { Avatar, Badge, buttonStyles, Card, CardBody, CardHeader, EmptyState, Me
 import { ChannelIcon, LangTag, ScoreBadge } from "@/components/domain";
 import { useNow, useStore } from "@/lib/store";
 import { computeKpis } from "@/lib/metrics";
+import { QA_TARGET_PCT, qaSample } from "@/lib/qa";
 import { STAGES } from "@/lib/labels";
 import { dateTime, duration, relTime } from "@/lib/format";
 
@@ -26,6 +28,7 @@ export function Overview() {
   const now = useNow();
   const me = state.advisors.find((a) => a.id === state.me)!;
   const k = useMemo(() => computeKpis(state), [state]);
+  const qa = useMemo(() => qaSample(state, now + 1), [state, now]);
 
   const attention = useMemo(
     () =>
@@ -60,13 +63,21 @@ export function Overview() {
         }
       />
       <div className="space-y-6 p-6">
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
           <Stat icon={Zap} label="Median first reply" value={duration(k.medianFirstResponseMs)} target="< 1 min" good={k.medianFirstResponseMs < 60_000} delta={k.medianFirstResponseMs < 60_000 ? "On target" : "Above target"} />
           <Stat icon={MessageSquareReply} label="Resolved without human" value={`${k.resolvedWithoutHumanPct.toFixed(0)}%`} target="≥ 60%" good={k.resolvedWithoutHumanPct >= 60} delta={k.resolvedWithoutHumanPct >= 60 ? "On target" : "Below target"} />
           <Stat icon={Target} label="Booked calls qualified" value={`${k.qualifiedBookedPct.toFixed(0)}%`} target="≥ 70%" good={k.qualifiedBookedPct >= 70} delta={k.qualifiedBookedPct >= 70 ? "On target" : "Below target"} />
           <Stat icon={CalendarCheck} label="Calls booked" value={k.callsBooked} target="+30% vs baseline" delta="Baseline set in week 1" />
           <Stat icon={Clock} label="Leads with follow-up" value={`${k.followUpCoveragePct.toFixed(0)}%`} target="100%" good={k.followUpCoveragePct >= 99.5} delta={`${k.leads} leads total`} />
           <Stat icon={Link2} label="Source attribution" value={`${k.attributionPct.toFixed(0)}%`} target="≥ 95%" good={k.attributionPct >= 95} delta={k.attributionPct >= 95 ? "On target" : "Below target"} />
+          <Stat
+            icon={Flag}
+            label="Answers flagged wrong"
+            value={qa.wrongPct === undefined ? "—" : `${qa.wrongPct.toFixed(1)}%`}
+            target={`< ${QA_TARGET_PCT}%`}
+            good={qa.wrongPct === undefined ? undefined : qa.wrongPct < QA_TARGET_PCT}
+            delta={`${qa.reviewed} of ${qa.answers} reviewed`}
+          />
         </section>
 
         <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">

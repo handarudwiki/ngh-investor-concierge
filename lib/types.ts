@@ -50,6 +50,8 @@ export interface Message {
   assets?: AssetRef[];
   /** KB article ids the bot grounded its answer in (FR-03). */
   sources?: string[];
+  /** Lead sent a voice note; `text` holds its transcript (FR-05). */
+  voice?: { durationSec: number };
 }
 
 export interface Booking {
@@ -163,6 +165,20 @@ export interface AuditEntry {
   leadId?: string;
 }
 
+export type QaIssue = "wrong_fact" | "should_escalate" | "off_brand" | "wrong_language" | "other";
+
+/** One concierge answer checked in the weekly QA review (NFR accuracy). */
+export interface QaReview {
+  id: string;
+  leadId: string;
+  messageId: string;
+  verdict: "correct" | "wrong";
+  issue?: QaIssue;
+  note?: string;
+  reviewer: string;
+  at: string;
+}
+
 export interface ScoringRules {
   budget: Record<Budget, number>;
   timeline: Record<Timeline, number>;
@@ -187,6 +203,7 @@ export interface Settings {
 
 export interface State {
   version: number;
+  /** Signed-in team member's advisor id; empty when signed out. */
   me: string;
   advisors: Advisor[];
   leads: Lead[];
@@ -195,5 +212,6 @@ export interface State {
   assumptions: Assumptions;
   templates: Template[];
   audit: AuditEntry[];
+  qa: QaReview[];
   settings: Settings;
 }

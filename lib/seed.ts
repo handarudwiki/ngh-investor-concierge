@@ -294,7 +294,13 @@ const iso = (now: number, mins: number) => new Date(now + mins * 60_000).toISOSt
 const slot = (now: number, mins: number) => new Date(Math.ceil((now + mins * 60_000) / 18e5) * 18e5).toISOString();
 const DAY = 24 * 60;
 
+/** "woensdag 08:00" in the lead's own language and time zone, for seeded booking chats. */
+const when = (at: string, locale: string, timeZone: string) =>
+  `${new Date(at).toLocaleDateString(locale, { weekday: "long", timeZone })} ${new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone })}`;
+
 function leads(now: number): Lead[] {
+  const pieterSlots = nextSlots(now, 2, "Europe/Amsterdam");
+  const carlosSlot = nextSlots(now, 3, "America/Mexico_City")[2];
   const base = (id: string, mins: number) => ({
     id,
     createdAt: iso(now, -mins),
@@ -333,7 +339,7 @@ function leads(now: number): Lead[] {
       objections: ["Wants clarity on lease extension terms"],
       unitIds: ["u4"],
       briefGeneratedAt: iso(now, -10 * 60),
-      booking: { at: nextSlots(now, 1)[0], advisorId: "a1", timezone: "Europe/Amsterdam", remindersSent: ["24h"] },
+      booking: { at: pieterSlots[0], advisorId: "a1", timezone: "Europe/Amsterdam", remindersSent: ["24h"] },
       lastMessageAt: iso(now, -9.5 * 60),
       messages: thread("l1", now, [
         ["system", 11 * 60, "New WhatsApp conversation · source: Meta ad “NL Villas Oct”"],
@@ -342,9 +348,9 @@ function leads(now: number): Lead[] {
         ["lead", 10.9 * 60, "Verhuren, als belegging. Hoe zit het met eigendom als Nederlander?"],
         ["bot", 10.9 * 60 - 0.4, "Buitenlandse particulieren kunnen in Indonesië geen volledig eigendom bezitten. De meeste kopers kopen een geregistreerde leasehold — bij Uluwatu Paradise 30 jaar met verlengingsoptie. Dit is een algemene uitleg, geen juridisch advies. Wat is ongeveer uw budget en wanneer wilt u beslissen?", { sources: ["kb-leasehold"] }],
         ["lead", 10.8 * 60, "Tussen 500k en 1M, contant. Liefst binnen 3 maanden. Wat is het verwachte rendement?"],
-        ["bot", 10.8 * 60 - 0.4, "Dank u. Ik heb een persoonlijke brief voor u gemaakt met indicatieve scenario's (geen garantie, aannames erbij). U komt in aanmerking voor een gesprek met Joost van Dijk, onze sales partner. Morgen om 10:30 (Amsterdam) of 15:00 — wat past?", { sources: ["kb-yield"], assets: [{ id: "brief", kind: "brochure", label: "Uw investeringsbrief" }] }],
-        ["lead", 10 * 60, "10:30 graag."],
-        ["bot", 10 * 60 - 0.3, "Geboekt: gesprek met Joost van Dijk, morgen 10:30 (Europe/Amsterdam). U ontvangt 24 uur en 1 uur vooraf een herinnering."],
+        ["bot", 10.8 * 60 - 0.4, `Dank u. Ik heb een persoonlijke brief voor u gemaakt met indicatieve scenario's (geen garantie, aannames erbij). U komt in aanmerking voor een gesprek met Joost van Dijk, onze sales partner. ${when(pieterSlots[0], "nl-NL", "Europe/Amsterdam")} of ${when(pieterSlots[1], "nl-NL", "Europe/Amsterdam")} (Amsterdam) — wat past?`, { sources: ["kb-yield"], assets: [{ id: "brief", kind: "brochure", label: "Uw investeringsbrief" }] }],
+        ["lead", 10 * 60, `${when(pieterSlots[0], "nl-NL", "Europe/Amsterdam")} graag.`],
+        ["bot", 10 * 60 - 0.3, `Geboekt: gesprek met Joost van Dijk, ${when(pieterSlots[0], "nl-NL", "Europe/Amsterdam")} (Europe/Amsterdam). U ontvangt 24 uur en 1 uur vooraf een herinnering.`],
         ["system", 10 * 60 - 0.3, "Scored Hot · routed to Joost van Dijk (language NL, senior) · Calendly booking confirmed"],
         ["lead", 9.5 * 60, "Kunnen jullie ook de plattegrond sturen?"],
         ["bot", 9.5 * 60 - 0.2, "Natuurlijk, hier is de plattegrond van Villa Batu 3BR.", { assets: [{ id: "fp-u4", kind: "floor_plan", label: "Villa Batu 3BR — floor plan" }] }],
@@ -379,7 +385,7 @@ function leads(now: number): Lead[] {
         ["system", 40, "Website chat started on uluwatuparadise.com/villas"],
         ["lead", 40, "Здравствуйте! Сколько стоит вилла на скале?"],
         ["bot", 39.6, "Здравствуйте! Я ИИ-ассистент NGH, и вы в любой момент можете попросить живого консультанта. Вилла на скале с 4 спальнями стоит 1,25 млн USD (лизхолд 30 лет). Планируете жить, сдавать в аренду или держать как инвестицию?", { sources: ["kb-prices"] }],
-        ["lead", 35, "Как инвестицию, бюджет больше миллиона, оплата наличными. Покупать планирую в ближайшие полгода."],
+        ["lead", 35, "Как инвестицию, бюджет больше миллиона, оплата наличными. Покупать планирую в ближайшие полгода.", { voice: { durationSec: 9 } }],
         ["bot", 34.6, "Спасибо! Подготовлю для вас персональную подборку. Оставите email, чтобы я отправила её?"],
         ["lead", 30, "anna.v@example.com"],
         ["lead", 7, "Возможна ли скидка, если я оплачу всю сумму сразу?"],
@@ -645,15 +651,15 @@ function leads(now: number): Lead[] {
       topics: ["Rental yields", "Process"],
       unitIds: ["u4"],
       briefGeneratedAt: iso(now, -3.8 * 60),
-      booking: { at: nextSlots(now, 3)[2], advisorId: "a4", timezone: "America/Mexico_City", remindersSent: [] },
+      booking: { at: carlosSlot, advisorId: "a4", timezone: "America/Mexico_City", remindersSent: [] },
       lastMessageAt: iso(now, -3.7 * 60),
       messages: thread("l11", now, [
         ["lead", 4 * 60, "Hola, ¿cuál es el proceso de compra para extranjeros?"],
         ["bot", 4 * 60 - 0.4, "1) Llamada con un asesor. 2) Elegir unidad y recibir documentos. 3) Reserva. 4) Revisión legal y firma ante notario. 5) Pagos por etapas. 6) Entrega y gestión de alquiler opcional. ¿Cuál es su presupuesto?", { sources: ["kb-process"] }],
         ["lead", 3.9 * 60, "Unos 700 mil, al contado, para alquilar. En 3-4 meses."],
-        ["bot", 3.85 * 60, "¡Gracias! Le he preparado un brief personalizado con escenarios indicativos (no son garantía). ¿Le viene bien una llamada con Lucía mañana a las 9:00 (Ciudad de México)?", { assets: [{ id: "brief", kind: "brochure", label: "Su brief de inversión" }] }],
+        ["bot", 3.85 * 60, `¡Gracias! Le he preparado un brief personalizado con escenarios indicativos (no son garantía). ¿Le viene bien una llamada con Lucía el ${when(carlosSlot, "es-ES", "America/Mexico_City")} (Ciudad de México)?`, { assets: [{ id: "brief", kind: "brochure", label: "Su brief de inversión" }] }],
         ["lead", 3.8 * 60, "Sí, perfecto."],
-        ["bot", 3.7 * 60, "Reservado: llamada con Lucía Fernández, mañana 9:00 (America/Mexico_City). Recibirá recordatorios 24 h y 1 h antes."],
+        ["bot", 3.7 * 60, `Reservado: llamada con Lucía Fernández, ${when(carlosSlot, "es-ES", "America/Mexico_City")} (America/Mexico_City). Recibirá recordatorios 24 h y 1 h antes.`],
       ]),
     },
     {
@@ -740,8 +746,9 @@ function leads(now: number): Lead[] {
 
 export function seedState(now: number = SEED_NOW): State {
   return {
-    version: 1,
-    me: "a1",
+    version: 2,
+    // Signed out until someone signs in on /login.
+    me: "",
     advisors,
     leads: leads(now),
     kb: kb(now),
@@ -761,6 +768,26 @@ export function seedState(now: number = SEED_NOW): State {
       { id: "au2", at: new Date(now - 9 * DAY * 60_000 + 30 * 60_000).toISOString(), actor: "Joost van Dijk", action: "Took over conversation", leadId: "l8" },
       { id: "au3", at: new Date(now - 2 * DAY * 60_000).toISOString(), actor: "System", action: "Lead opted out — automations stopped", leadId: "l12" },
       { id: "au4", at: new Date(now - 6.5 * 60_000).toISOString(), actor: "Concierge", action: "Escalated: price negotiation", leadId: "l2" },
+    ],
+    qa: [
+      ...["l1-m2", "l1-m4", "l1-m6", "l1-m8", "l7-m1", "l7-m3", "l2-m4"].map((messageId, i) => ({
+        id: `qa${i + 1}`,
+        leadId: messageId.split("-")[0],
+        messageId,
+        verdict: "correct" as const,
+        reviewer: "Dewi Lestari",
+        at: new Date(now - (7 - i) * 60_000).toISOString(),
+      })),
+      {
+        id: "qa8",
+        leadId: "l2",
+        messageId: "l2-m2",
+        verdict: "wrong" as const,
+        issue: "wrong_fact" as const,
+        note: "Quoted the price without “from the current price list”. Update the pricing article wording.",
+        reviewer: "Dewi Lestari",
+        at: new Date(now - 4 * 60_000).toISOString(),
+      },
     ],
     settings: {
       costCapUsd: 250,

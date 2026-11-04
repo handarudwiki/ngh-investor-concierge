@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarCheck, FileText, Image as ImageIcon, MapPin, Send, ShieldCheck, UserRound, Video } from "lucide-react";
+import { CalendarCheck, FileText, Image as ImageIcon, MapPin, Mic, Send, ShieldCheck, Square, UserRound, Video, X } from "lucide-react";
 import { BotAvatar, Avatar } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { bookCall, createLead, editLead, newMessage, uid } from "@/lib/actions";
@@ -11,6 +11,7 @@ import { getState, useStore } from "@/lib/store";
 import { t } from "@/lib/concierge/i18n";
 import type { TurnResult } from "@/lib/concierge/types";
 import type { AssetRef, Channel, Language, Lead } from "@/lib/types";
+import { formatDuration, useVoiceNote } from "./use-voice-note";
 
 export interface Visitor {
   country: string;
@@ -107,7 +108,7 @@ export function ChatWidget({
     return created;
   };
 
-  const send = async (raw: string) => {
+  const send = async (raw: string, voice?: { durationSec: number }) => {
     const body = raw.trim();
     if (!body || typing) return;
     setText("");
@@ -117,7 +118,12 @@ export function ChatWidget({
       ...l,
       unread: l.unread + 1,
       lastMessageAt: new Date().toISOString(),
-      messages: [...l.messages, newMessage("lead", body)],
+      messages: [
+        ...l.messages,
+        newMessage("lead", body, voice && { voice }),
+        // FR-05: the concierge works from the transcript and replies in text.
+        ...(voice ? [newMessage("system", `Voice note (${formatDuration(voice.durationSec)}) transcribed · concierge replies in text`)] : []),
+      ],
     }));
 
     // FR-17: once a human has taken over, the concierge stays silent.
@@ -190,6 +196,8 @@ export function ChatWidget({
     }));
   };
 
+  const voice = useVoiceNote((transcript, durationSec) => send(transcript, { durationSec }));
+
   const isWa = channel === "whatsapp";
   const started = Boolean(lead) || consented;
 
@@ -259,6 +267,11 @@ export function ChatWidget({
                       : "rounded-tl-xs bg-surface text-ink",
                   )}
                 >
+                  {m.voice && (
+                    <span className="mb-1 flex items-center gap-1 text-2xs font-medium opacity-80">
+                      <Mic className="size-3" /> Voice note · {formatDuration(m.voice.durationSec)}
+                    </span>
+                  )}
                   {m.text}
                   {m.assets?.map((a) => {
                     const Icon = assetIcon[a.kind];
@@ -317,32 +330,72 @@ export function ChatWidget({
       </div>
 
       {/* Composer */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          send(text);
-        }}
-        className="flex items-center gap-2 border-t border-line bg-surface p-3"
-      >
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          disabled={!started}
-          placeholder={started ? "Type your message…" : "Agree to start chatting"}
-          className="h-9 flex-1 rounded-full border border-line bg-subtle px-4 text-sm outline-none focus:border-accent focus:bg-surface disabled:opacity-60"
-        />
-        <button
-          type="submit"
-          disabled={!started || !text.trim() || typing}
-          aria-label="Send"
-          className={cn(
-            "inline-flex size-9 items-center justify-center rounded-full text-ink-inverse disabled:opacity-40",
-            isWa ? "bg-whatsapp" : "bg-accent",
-          )}
+      {voice.error && <p className="border-t border-line bg-surface px-4 pt-2 text-2xs text-danger">{voice.error}</p>}
+      {voice.recording ? (
+        <div className="flex items-center gap-2 border-t border-line bg-surface p-3">
+          <button
+            onClick={voice.cancel}
+            aria-label="Discard voice note"
+            className="inline-flex size-9 items-center justify-center rounded-full text-ink-subtle hover:bg-subtle"
+          >
+            <X className="size-4" />
+          </button>
+          <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-danger/30 bg-danger-soft px-4 text-sm">
+            <span className="size-2 shrink-0 animate-pulse rounded-full bg-danger" />
+            <span className="truncate text-ink-muted">{voice.recording.interim || "Listening…"}</span>
+          </div>
+          <button
+            onClick={voice.stop}
+            aria-label="Send voice note"
+            className={cn("inline-flex size-9 items-center justify-center rounded-full text-ink-inverse", isWa ? "bg-whatsapp" : "bg-accent")}
+          >
+            <Square className="size-3.5 fill-current" />
+          </button>
+        </div>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send(text);
+          }}
+          className="flex items-center gap-2 border-t border-line bg-surface p-3"
         >
-          <Send className="size-4" />
-        </button>
-      </form>
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            disabled={!started}
+            placeholder={started ? "Type your message…" : "Agree to start chatting"}
+            className="h-9 flex-1 rounded-full border border-line bg-subtle px-4 text-sm outline-none focus:border-accent focus:bg-surface disabled:opacity-60"
+          />
+          {text.trim() ? (
+            <button
+              type="submit"
+              disabled={!started || typing}
+              aria-label="Send"
+              className={cn(
+                "inline-flex size-9 items-center justify-center rounded-full text-ink-inverse disabled:opacity-40",
+                isWa ? "bg-whatsapp" : "bg-accent",
+              )}
+            >
+              <Send className="size-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => voice.start(lang)}
+              disabled={!started || typing || !voice.supported}
+              aria-label="Record a voice note"
+              title={voice.supported ? "Record a voice note" : "Voice notes need a browser with speech recognition (Chrome, Edge or Safari)"}
+              className={cn(
+                "inline-flex size-9 items-center justify-center rounded-full text-ink-inverse disabled:opacity-40",
+                isWa ? "bg-whatsapp" : "bg-accent",
+              )}
+            >
+              <Mic className="size-4" />
+            </button>
+          )}
+        </form>
+      )}
       <p className="bg-surface pb-2 text-center text-[10px] text-ink-subtle">
         AI assistant · answers from NGH-approved information · not financial or legal advice
       </p>

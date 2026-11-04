@@ -152,7 +152,7 @@ export function decide(
   const wantsCall = u.intents.includes("booking");
   if ((qualified || wantsCall) && !lead.booking && !lead.optedOut) {
     const advisor = advisorFor();
-    slots = nextSlots(now, 4);
+    slots = nextSlots(now, 4, lead.timezone, ctx.settings.businessHours);
     lines.push(t(lang, "offer_call", { advisor: advisor?.name ?? "an advisor", tz: lead.timezone }));
   } else if (engine === "rules" && !escalation) {
     const next = missingFields(merged).find((f) => f !== "ownership" && f !== "financing" && f !== "name") ?? missingFields(merged)[0];

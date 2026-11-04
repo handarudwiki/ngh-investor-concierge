@@ -63,24 +63,45 @@ export function advisorLoad(leads: Lead[]) {
   return load;
 }
 
+/** Hours (local, 24h) we offer a call to a lead: no calls before 08:00 or starting after 20:00. */
+const LEAD_HOURS = { start: 8, end: 21 };
+
+function localHour(at: number, timeZone: string) {
+  return Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone }).format(at));
+}
+
 /**
- * Next weekday Calendly-style slots in the advisors' Bali hours
- * (09:00–17:00 WITA = 01:00–09:00 UTC), at least 2 hours out (FR-11).
+ * Next weekday Calendly-style slots, on the hour inside the advisors' Bali
+ * business hours (WITA, UTC+8) and at least 2 hours out (FR-11). With the
+ * lead's time zone, only slots that also fall in the lead's waking hours are
+ * offered; if none overlap in the next two weeks, every advisor slot is.
  */
-export function nextSlots(now: number, count = 6) {
-  const out: string[] = [];
-  const hoursUtc = [1, 3, 6, 8];
+export function nextSlots(
+  now: number,
+  count = 6,
+  leadTimezone?: string,
+  hours: { start: number; end: number } = { start: 9, end: 18 },
+) {
+  const advisorSlots: number[] = [];
   const d = new Date(now);
   d.setUTCMinutes(0, 0, 0);
-  for (let i = 0; i < 14 * 24 && out.length < count; i++) {
+  for (let i = 0; i < 14 * 24; i++) {
     d.setUTCHours(d.getUTCHours() + 1);
-    const weekday = new Date(d.getTime() + 8 * 3600e3).getUTCDay();
+    const bali = new Date(d.getTime() + 8 * 3600e3);
+    const weekday = bali.getUTCDay();
     if (weekday === 0 || weekday === 6) continue;
-    if (!hoursUtc.includes(d.getUTCHours())) continue;
+    // Last slot starts an hour before close.
+    if (bali.getUTCHours() < hours.start || bali.getUTCHours() >= hours.end) continue;
     if (d.getTime() - now < 2 * 3600e3) continue;
-    out.push(d.toISOString());
+    advisorSlots.push(d.getTime());
   }
-  return out;
+  const suitable = leadTimezone
+    ? advisorSlots.filter((t) => {
+        const h = localHour(t, leadTimezone);
+        return h >= LEAD_HOURS.start && h < LEAD_HOURS.end;
+      })
+    : advisorSlots;
+  return (suitable.length ? suitable : advisorSlots).slice(0, count).map((t) => new Date(t).toISOString());
 }
 
 export interface Scenario {

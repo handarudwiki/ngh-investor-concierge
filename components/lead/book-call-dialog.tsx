@@ -14,7 +14,8 @@ export function BookCallDialog({ lead, open, onClose }: { lead: Lead; open: bool
   const now = useNow();
   const advisors = useStore((s) => s.advisors);
   const leads = useStore((s) => s.leads);
-  const slots = useMemo(() => nextSlots(now), [now]);
+  const hours = useStore((s) => s.settings.businessHours);
+  const slots = useMemo(() => nextSlots(now, 6, lead.timezone, hours), [now, lead.timezone, hours]);
   const [picked, setPicked] = useState<string>();
   const advisor =
     advisors.find((a) => a.id === lead.advisorId) ?? routeLead(lead, advisors, advisorLoad(leads));

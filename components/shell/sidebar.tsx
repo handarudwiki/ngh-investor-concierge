@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemo } from "react";
 import {
   BarChart3,
@@ -10,15 +10,18 @@ import {
   Inbox,
   KanbanSquare,
   LayoutDashboard,
+  LogOut,
   MessageCircle,
   Settings,
+  ShieldCheck,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import { Avatar, Count } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useNow, useStore } from "@/lib/store";
-import { switchUser } from "@/lib/actions";
+import { signOut } from "@/lib/actions";
+import { can, ROLE_LABEL, type Permission } from "@/lib/permissions";
 
 interface NavItem {
   href: string;
@@ -26,10 +29,12 @@ interface NavItem {
   icon: LucideIcon;
   count?: number;
   attention?: boolean;
+  permission?: Permission;
 }
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const leads = useStore((s) => s.leads);
   const advisors = useStore((s) => s.advisors);
   const meId = useStore((s) => s.me);
@@ -45,7 +50,7 @@ export function Sidebar() {
     };
   }, [leads, now]);
 
-  const groups: { label?: string; items: NavItem[] }[] = [
+  const allGroups: { label?: string; items: NavItem[] }[] = [
     {
       items: [
         { href: "/", label: "Overview", icon: LayoutDashboard },
@@ -60,10 +65,12 @@ export function Sidebar() {
       items: [
         { href: "/knowledge", label: "Knowledge base", icon: BookOpen },
         { href: "/reports", label: "Reports", icon: BarChart3 },
-        { href: "/settings", label: "Settings", icon: Settings },
+        { href: "/qa", label: "Quality review", icon: ShieldCheck, permission: "qa.review" },
+        { href: "/settings", label: "Settings", icon: Settings, permission: "settings" },
       ],
     },
   ];
+  const groups = allGroups.map((g) => ({ ...g, items: g.items.filter((item) => !item.permission || can(me, item.permission)) }));
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -126,25 +133,26 @@ export function Sidebar() {
           <MessageCircle className="size-4 shrink-0" />
           <span className="hidden lg:block">Preview concierge</span>
         </Link>
-        <label className="relative flex h-10 items-center gap-2.5 rounded-sm px-1.5 hover:bg-sidebar-hover">
+        <div className="flex h-10 items-center gap-2.5 rounded-sm px-1.5">
           <Avatar name={me.name} size="sm" />
           <span className="hidden min-w-0 flex-1 leading-tight lg:block">
             <span className="block truncate text-xs font-medium text-ink-inverse">{me.name}</span>
-            <span className="block truncate text-2xs text-sidebar-ink/60">{me.title}</span>
+            <span className="block truncate text-2xs text-sidebar-ink/60">
+              {me.title} · {ROLE_LABEL[me.role]}
+            </span>
           </span>
-          <select
-            aria-label="Switch user"
-            value={meId}
-            onChange={(e) => switchUser(e.target.value)}
-            className="absolute inset-0 cursor-pointer opacity-0"
+          <button
+            onClick={() => {
+              signOut();
+              router.replace("/login");
+            }}
+            title="Sign out"
+            aria-label="Sign out"
+            className="hidden size-7 shrink-0 items-center justify-center rounded-sm hover:bg-sidebar-hover hover:text-ink-inverse lg:inline-flex"
           >
-            {advisors.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} — {a.title}
-              </option>
-            ))}
-          </select>
-        </label>
+            <LogOut className="size-3.5" />
+          </button>
+        </div>
       </div>
     </nav>
   );
