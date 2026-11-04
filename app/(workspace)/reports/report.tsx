@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { CalendarCheck, CircleHelp, Moon, Printer, Target, Users, Zap } from "lucide-react";
+import { CalendarCheck, CircleHelp, Flag, Moon, Printer, Target, Users, Zap } from "lucide-react";
 import { Avatar, Button, Card, CardBody, CardHeader, PageHeader, Segmented, Stat } from "@/components/ui";
 import { Columns, HBars } from "@/components/charts";
 import { computeKpis, topTopics, type Kpis } from "@/lib/metrics";
+import { QA_TARGET_PCT, qaSample } from "@/lib/qa";
 import { LANGUAGES, SOURCES, STAGES } from "@/lib/labels";
 import { duration, TEAM_TZ } from "@/lib/format";
 import { useNow, useStore } from "@/lib/store";
@@ -32,6 +33,8 @@ export function Report() {
     const inRange = state.leads.filter((l) => Date.parse(l.createdAt) >= from);
     return { cur, prev, inRange };
   }, [state, from, now, period]);
+
+  const qa = useMemo(() => qaSample(state, now + 1, from), [state, now, from]);
 
   const daily = useMemo(
     () =>
@@ -105,13 +108,21 @@ export function Report() {
         }
       />
       <div className="space-y-6 p-6">
-        <section className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        <section className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7">
           <Stat icon={Users} label="New leads" value={cur.leads} delta={d.leads.text} good={d.leads.good} />
           <Stat icon={Zap} label="Median first reply" value={duration(cur.medianFirstResponseMs)} target="< 1 min" good={cur.medianFirstResponseMs < 60_000} delta={cur.medianFirstResponseMs < 60_000 ? "On target" : "Above target"} />
           <Stat icon={Target} label="Qualified rate" value={`${cur.qualifiedPct.toFixed(0)}%`} delta={d.qualified.text} good={d.qualified.good} />
           <Stat icon={CalendarCheck} label="Calls booked" value={cur.callsBooked} delta={d.booked.text} good={d.booked.good} />
           <Stat label="Resolved without human" value={`${cur.resolvedWithoutHumanPct.toFixed(0)}%`} target="≥ 60%" good={cur.resolvedWithoutHumanPct >= 60} delta={cur.resolvedWithoutHumanPct >= 60 ? "On target" : "Below target"} />
           <Stat icon={Moon} label="Arrived after hours" value={`${cur.afterHoursPct.toFixed(0)}%`} delta="Outside 09:00–18:00 WITA" />
+          <Stat
+            icon={Flag}
+            label="Flagged wrong in QA"
+            value={qa.wrongPct === undefined ? "—" : `${qa.wrongPct.toFixed(1)}%`}
+            target={`< ${QA_TARGET_PCT}%`}
+            good={qa.wrongPct === undefined ? undefined : qa.wrongPct < QA_TARGET_PCT}
+            delta={`${qa.reviewed} answers reviewed`}
+          />
         </section>
 
         <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">

@@ -60,6 +60,8 @@ export function WidgetPreview() {
   const [persona, setPersona] = useState(0);
   const [leadIds, setLeadIds] = useState<Record<string, string>>({});
   const [engine, setEngine] = useState<string>();
+  // Bumped by "New conversation" to remount the widget with fresh state.
+  const [session, setSession] = useState(0);
   const visitor = PERSONAS[persona];
   const key = `${channel}:${persona}`;
   const leadId = leadIds[key];
@@ -90,6 +92,7 @@ export function WidgetPreview() {
     const next = { ...leadIds };
     delete next[key];
     setLeadIds(next);
+    setSession((n) => n + 1);
     try {
       window.sessionStorage.setItem(KEY, JSON.stringify(next));
     } catch {}
@@ -155,7 +158,7 @@ export function WidgetPreview() {
         </div>
 
         <div className="h-[680px]">
-          <ChatWidget key={key + (leadId ?? "")} channel={channel} visitor={visitor} leadId={leadId} onLead={remember} />
+          <ChatWidget key={`${key}:${session}`} channel={channel} visitor={visitor} leadId={leadId} onLead={remember} />
         </div>
 
         <Card className="self-start">

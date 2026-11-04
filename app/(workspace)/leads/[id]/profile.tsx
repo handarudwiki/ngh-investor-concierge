@@ -8,6 +8,7 @@ import { Button, buttonStyles, Card, CardBody, CardHeader, Dialog, EmptyState, F
 import { LeadSummary } from "@/components/lead/summary";
 import { Thread } from "@/components/lead/thread";
 import { deleteLead, updateLead } from "@/lib/actions";
+import { useCan } from "@/lib/permissions";
 import { BUDGETS, FINANCING, LANGUAGES, OWNERSHIP, PURPOSES, TIMELINES } from "@/lib/labels";
 import { dateTime } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -32,6 +33,7 @@ export function LeadProfile() {
   const lead = useStore((s) => s.leads.find((l) => l.id === id));
   const audit = useStore((s) => s.audit);
   const [erase, setErase] = useState(false);
+  const canDelete = useCan("lead.delete");
   const history = useMemo(() => audit.filter((a) => a.leadId === id), [audit, id]);
 
   if (!lead) {
@@ -73,9 +75,11 @@ export function LeadProfile() {
           <Button size="sm" onClick={exportData}>
             <Download /> Export data
           </Button>
-          <Button size="sm" variant="danger" onClick={() => setErase(true)}>
-            <Trash2 /> Delete on request
-          </Button>
+          {canDelete && (
+            <Button size="sm" variant="danger" onClick={() => setErase(true)}>
+              <Trash2 /> Delete on request
+            </Button>
+          )}
         </div>
       </header>
 

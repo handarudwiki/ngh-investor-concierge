@@ -5,9 +5,11 @@ import { useMemo, useState } from "react";
 import { BellOff, CalendarClock, Check, Mail, MessageCircle, Pause, Play, Send, ShieldAlert } from "lucide-react";
 import { Avatar, Badge, Button, Card, CardHeader, EmptyState, PageHeader, Segmented, Switch, Tabs, Textarea } from "@/components/ui";
 import { LangTag } from "@/components/domain";
+import { ReadOnlyNotice } from "@/components/shell/access";
 import { cn } from "@/lib/cn";
 import { automationAllowed, editLead, fillTemplate, runAutomations, saveTemplate, updateSettings } from "@/lib/actions";
 import { LANGUAGES } from "@/lib/labels";
+import { useCan } from "@/lib/permissions";
 import { dateTime, relTime } from "@/lib/format";
 import { useNow, useStore } from "@/lib/store";
 import type { Language, Lead, Template, TemplateKind } from "@/lib/types";
@@ -143,6 +145,7 @@ function TemplateEditor() {
   const t = templates.find((x) => x.id === id)!;
   const state = useStore((s) => s);
   const sample = state.leads.find((l) => l.id === "l7") ?? state.leads[0];
+  const canEdit = useCan("templates.edit");
   const update = (patch: Partial<Template>) => saveTemplate({ ...t, ...patch });
 
   return (
@@ -162,14 +165,15 @@ function TemplateEditor() {
         ))}
       </ul>
       <div className="space-y-4 p-4">
+        {!canEdit && <ReadOnlyNotice>Templates are edited and submitted to Meta by an admin.</ReadOnlyNotice>}
         <div className="flex flex-wrap items-center gap-3">
           <h3 className="text-base font-semibold">{t.name}</h3>
           <label className="flex items-center gap-2 text-xs text-ink-muted">
-            <Switch checked={t.active} onChange={(v) => update({ active: v })} label="Active" /> Active
+            <Switch checked={t.active} onChange={(v) => update({ active: v })} label="Active" disabled={!canEdit} /> Active
           </label>
           {t.channel === "whatsapp" && (
             <label className="flex items-center gap-2 text-xs text-ink-muted">
-              <Switch checked={t.metaApproved} onChange={(v) => update({ metaApproved: v })} label="Meta approved" /> Meta-approved template
+              <Switch checked={t.metaApproved} onChange={(v) => update({ metaApproved: v })} label="Meta approved" disabled={!canEdit} /> Meta-approved template
             </label>
           )}
         </div>
@@ -187,7 +191,8 @@ function TemplateEditor() {
           key={`${t.id}-${lang}`}
           defaultValue={t.body[lang] ?? ""}
           placeholder={`No ${LANGUAGES[lang].label} version yet — leads in this language get the English template.`}
-          onBlur={(e) => update({ body: { ...t.body, [lang]: e.target.value || undefined } })}
+          readOnly={!canEdit}
+          onBlur={(e) => canEdit && update({ body: { ...t.body, [lang]: e.target.value || undefined } })}
           className="min-h-28"
         />
         <p className="text-2xs text-ink-subtle">
@@ -207,6 +212,7 @@ function TemplateEditor() {
 export function FollowUps() {
   const now = useNow();
   const enabled = useStore((s) => s.settings.followUpsEnabled);
+  const canToggle = useCan("settings");
   const leads = useStore((s) => s.leads);
   const [tab, setTab] = useState<"queue" | "reminders" | "paused" | "templates">("queue");
   const [flash, setFlash] = useState<string>();
@@ -221,7 +227,7 @@ export function FollowUps() {
         actions={
           <>
             <label className="flex items-center gap-2 text-sm text-ink-muted">
-              <Switch checked={enabled} onChange={(v) => updateSettings({ followUpsEnabled: v })} label="Automations" />
+              <Switch checked={enabled} onChange={(v) => updateSettings({ followUpsEnabled: v })} label="Automations" disabled={!canToggle} />
               {enabled ? "Automations on" : "Automations paused"}
             </label>
             <Button

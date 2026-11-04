@@ -19,9 +19,11 @@ import {
   Tabs,
   Textarea,
 } from "@/components/ui";
+import { ReadOnlyNotice } from "@/components/shell/access";
 import { cn } from "@/lib/cn";
 import { deleteKb, saveAssumptions, saveKb, saveUnit, uid } from "@/lib/actions";
 import { LANGUAGES, usd } from "@/lib/labels";
+import { useCan } from "@/lib/permissions";
 import { scenarios } from "@/lib/rules";
 import { dateTime } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -48,32 +50,36 @@ function ArticleEditor({ article, onDone }: { article: KbArticle; onDone: () => 
   const [keywords, setKeywords] = useState(article.keywords.join(", "));
   const set = (patch: Partial<KbArticle>) => setDraft((d) => ({ ...d, ...patch }));
   const legal = draft.category === "ownership";
+  const canEdit = useCan("knowledge.edit");
 
   return (
     <div className="space-y-4 p-5">
-      <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
-        <Field label="Title">
-          <Input value={draft.title} onChange={(e) => set({ title: e.target.value })} />
+      {!canEdit && <ReadOnlyNotice>Read-only. The marketing manager (admin) edits and approves articles.</ReadOnlyNotice>}
+      <fieldset disabled={!canEdit} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
+          <Field label="Title">
+            <Input value={draft.title} onChange={(e) => set({ title: e.target.value })} />
+          </Field>
+          <Field label="Category">
+            <Select value={draft.category} onChange={(e) => set({ category: e.target.value as KbArticle["category"] })}>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c[0].toUpperCase() + c.slice(1)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <Field label="Keywords" hint="Comma-separated, in any language. The concierge uses them to find this article.">
+          <Input
+            value={keywords}
+            onChange={(e) => {
+              setKeywords(e.target.value);
+              set({ keywords: e.target.value.split(",").map((k) => k.trim().toLowerCase()).filter(Boolean) });
+            }}
+          />
         </Field>
-        <Field label="Category">
-          <Select value={draft.category} onChange={(e) => set({ category: e.target.value as KbArticle["category"] })}>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c[0].toUpperCase() + c.slice(1)}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-      <Field label="Keywords" hint="Comma-separated, in any language. The concierge uses them to find this article.">
-        <Input
-          value={keywords}
-          onChange={(e) => {
-            setKeywords(e.target.value);
-            set({ keywords: e.target.value.split(",").map((k) => k.trim().toLowerCase()).filter(Boolean) });
-          }}
-        />
-      </Field>
+      </fieldset>
       <div>
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-xs font-medium text-ink-muted">Approved answer</span>
@@ -85,48 +91,53 @@ function ArticleEditor({ article, onDone }: { article: KbArticle; onDone: () => 
         </div>
         <Textarea
           value={draft.body[lang] ?? ""}
+          readOnly={!canEdit}
           onChange={(e) => set({ body: { ...draft.body, [lang]: e.target.value || undefined } })}
           placeholder={`No ${LANGUAGES[lang].label} version — the concierge translates the English text (Claude engine) or shows it with a note (rules engine).`}
           className="min-h-36"
         />
       </div>
-      <div className="grid gap-3 rounded-md border border-line bg-subtle/50 p-3 sm:grid-cols-2">
-        <label className="flex items-start gap-2.5 text-sm">
-          <Switch checked={draft.approved} onChange={(v) => set({ approved: v })} label="Approved" />
-          <span>
-            <span className="block font-medium">Approved for the concierge</span>
-            <span className="text-xs text-ink-muted">
-              {legal ? "Ownership wording needs the legal advisor's sign-off." : "Only approved articles are ever used in answers."}
+      <fieldset disabled={!canEdit} className="space-y-4">
+        <div className="grid gap-3 rounded-md border border-line bg-subtle/50 p-3 sm:grid-cols-2">
+          <label className="flex items-start gap-2.5 text-sm">
+            <Switch checked={draft.approved} onChange={(v) => set({ approved: v })} label="Approved" />
+            <span>
+              <span className="block font-medium">Approved for the concierge</span>
+              <span className="text-xs text-ink-muted">
+                {legal ? "Ownership wording needs the legal advisor's sign-off." : "Only approved articles are ever used in answers."}
+              </span>
             </span>
-          </span>
-        </label>
-        <label className="flex items-start gap-2.5 text-sm">
-          <Switch checked={Boolean(draft.escalate)} onChange={(v) => set({ escalate: v })} label="Escalate" />
-          <span>
-            <span className="block font-medium">Hand off to an advisor</span>
-            <span className="text-xs text-ink-muted">Answer generally, then route to a human (legal, tax, visas).</span>
-          </span>
-        </label>
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <Field label="Content owner" className="w-56">
-          <Input value={draft.owner} onChange={(e) => set({ owner: e.target.value })} />
-        </Field>
-        <div className="flex gap-2 self-end">
-          <Button
-            variant="danger"
-            onClick={() => {
-              deleteKb(draft.id);
-              onDone();
-            }}
-          >
-            <Trash2 /> Delete
-          </Button>
-          <Button variant="primary" onClick={() => saveKb(draft)} disabled={!draft.title.trim() || !draft.body.en?.trim()}>
-            <Save /> Save
-          </Button>
+          </label>
+          <label className="flex items-start gap-2.5 text-sm">
+            <Switch checked={Boolean(draft.escalate)} onChange={(v) => set({ escalate: v })} label="Escalate" />
+            <span>
+              <span className="block font-medium">Hand off to an advisor</span>
+              <span className="text-xs text-ink-muted">Answer generally, then route to a human (legal, tax, visas).</span>
+            </span>
+          </label>
         </div>
-      </div>
+        <div className="flex items-center justify-between gap-2">
+          <Field label="Content owner" className="w-56">
+            <Input value={draft.owner} onChange={(e) => set({ owner: e.target.value })} />
+          </Field>
+          {canEdit && (
+            <div className="flex gap-2 self-end">
+              <Button
+                variant="danger"
+                onClick={() => {
+                  deleteKb(draft.id);
+                  onDone();
+                }}
+              >
+                <Trash2 /> Delete
+              </Button>
+              <Button variant="primary" onClick={() => saveKb(draft)} disabled={!draft.title.trim() || !draft.body.en?.trim()}>
+                <Save /> Save
+              </Button>
+            </div>
+          )}
+        </div>
+      </fieldset>
     </div>
   );
 }
@@ -137,6 +148,7 @@ function Articles({ seed }: { seed?: KbArticle }) {
   const [draftNew, setDraftNew] = useState<KbArticle | undefined>(seed);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<"all" | KbArticle["category"]>("all");
+  const canEdit = useCan("knowledge.edit");
 
   const list = useMemo(() => {
     const needle = q.toLowerCase();
@@ -156,18 +168,20 @@ function Articles({ seed }: { seed?: KbArticle }) {
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ink-subtle" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="pl-8" />
             </div>
-            <Button
-              icon
-              variant="primary"
-              aria-label="New article"
-              onClick={() => {
-                const a = blankArticle();
-                setDraftNew(a);
-                setSelected(a.id);
-              }}
-            >
-              <Plus />
-            </Button>
+            {canEdit && (
+              <Button
+                icon
+                variant="primary"
+                aria-label="New article"
+                onClick={() => {
+                  const a = blankArticle();
+                  setDraftNew(a);
+                  setSelected(a.id);
+                }}
+              >
+                <Plus />
+              </Button>
+            )}
           </div>
           <Select value={cat} onChange={(e) => setCat(e.target.value as typeof cat)} aria-label="Category">
             <option value="all">All categories</option>
@@ -218,48 +232,51 @@ function Articles({ seed }: { seed?: KbArticle }) {
 
 function Units() {
   const units = useStore((s) => s.units);
+  const canEdit = useCan("knowledge.edit");
   return (
     <Card>
       <CardHeader title="Units & prices" description="Kept current by the financial manager. The concierge quotes only these." />
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-line bg-subtle text-left text-2xs font-semibold tracking-wide text-ink-subtle uppercase [&>th]:px-4 [&>th]:py-2">
-            <th>Unit</th>
-            <th>Type</th>
-            <th>Size</th>
-            <th>Price (USD)</th>
-            <th>Avg nightly rate</th>
-            <th>Handover</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {units.map((u) => {
-            const set = (patch: Partial<Unit>) => saveUnit({ ...u, ...patch });
-            return (
-              <tr key={u.id} className="border-b border-line [&>td]:px-4 [&>td]:py-2">
-                <td className="font-medium">{u.name}</td>
-                <td className="text-ink-muted">{u.type} · {u.bedrooms} BR</td>
-                <td className="text-ink-muted">{u.sizeSqm} m²</td>
-                <td>
-                  <Input type="number" defaultValue={u.priceUsd} onBlur={(e) => set({ priceUsd: Number(e.target.value) || u.priceUsd })} className="w-32" />
-                </td>
-                <td>
-                  <Input type="number" defaultValue={u.adrUsd} onBlur={(e) => set({ adrUsd: Number(e.target.value) || u.adrUsd })} className="w-24" />
-                </td>
-                <td className="text-ink-muted">{u.handover}</td>
-                <td>
-                  <Select value={u.status} onChange={(e) => set({ status: e.target.value as Unit["status"] })} className="w-32">
-                    <option value="available">Available</option>
-                    <option value="reserved">Reserved</option>
-                    <option value="sold">Sold</option>
-                  </Select>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <fieldset disabled={!canEdit} className="contents">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-line bg-subtle text-left text-2xs font-semibold tracking-wide text-ink-subtle uppercase [&>th]:px-4 [&>th]:py-2">
+              <th>Unit</th>
+              <th>Type</th>
+              <th>Size</th>
+              <th>Price (USD)</th>
+              <th>Avg nightly rate</th>
+              <th>Handover</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {units.map((u) => {
+              const set = (patch: Partial<Unit>) => saveUnit({ ...u, ...patch });
+              return (
+                <tr key={u.id} className="border-b border-line [&>td]:px-4 [&>td]:py-2">
+                  <td className="font-medium">{u.name}</td>
+                  <td className="text-ink-muted">{u.type} · {u.bedrooms} BR</td>
+                  <td className="text-ink-muted">{u.sizeSqm} m²</td>
+                  <td>
+                    <Input type="number" defaultValue={u.priceUsd} onBlur={(e) => set({ priceUsd: Number(e.target.value) || u.priceUsd })} className="w-32" />
+                  </td>
+                  <td>
+                    <Input type="number" defaultValue={u.adrUsd} onBlur={(e) => set({ adrUsd: Number(e.target.value) || u.adrUsd })} className="w-24" />
+                  </td>
+                  <td className="text-ink-muted">{u.handover}</td>
+                  <td>
+                    <Select value={u.status} onChange={(e) => set({ status: e.target.value as Unit["status"] })} className="w-32">
+                      <option value="available">Available</option>
+                      <option value="reserved">Reserved</option>
+                      <option value="sold">Sold</option>
+                    </Select>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </fieldset>
     </Card>
   );
 }
@@ -270,38 +287,41 @@ function AssumptionsEditor() {
   const [draft, setDraft] = useState<Assumptions>(a);
   const sample = units.find((u) => u.id === "u4") ?? units[0];
   const num = (v: string) => Math.max(0, Math.min(100, Number(v) || 0));
+  const canEdit = useCan("knowledge.edit");
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
       <Card>
         <CardHeader title="Scenario assumptions" description="Used for every indicative scenario in briefs (FR-09, FR-10)" />
         <CardBody className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            {(["conservative", "base", "optimistic"] as const).map((k) => (
-              <Field key={k} label={`${k[0].toUpperCase() + k.slice(1)} occupancy %`}>
-                <Input type="number" value={draft.occupancy[k]} onChange={(e) => setDraft({ ...draft, occupancy: { ...draft.occupancy, [k]: num(e.target.value) } })} />
+          <fieldset disabled={!canEdit} className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              {(["conservative", "base", "optimistic"] as const).map((k) => (
+                <Field key={k} label={`${k[0].toUpperCase() + k.slice(1)} occupancy %`}>
+                  <Input type="number" value={draft.occupancy[k]} onChange={(e) => setDraft({ ...draft, occupancy: { ...draft.occupancy, [k]: num(e.target.value) } })} />
+                </Field>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Management fee % of revenue">
+                <Input type="number" value={draft.managementFeePct} onChange={(e) => setDraft({ ...draft, managementFeePct: num(e.target.value) })} />
               </Field>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Management fee % of revenue">
-              <Input type="number" value={draft.managementFeePct} onChange={(e) => setDraft({ ...draft, managementFeePct: num(e.target.value) })} />
+              <Field label="Operating costs % of revenue">
+                <Input type="number" value={draft.operatingCostPct} onChange={(e) => setDraft({ ...draft, operatingCostPct: num(e.target.value) })} />
+              </Field>
+            </div>
+            <Field label="Disclaimer shown with every scenario">
+              <Textarea value={draft.disclaimer} onChange={(e) => setDraft({ ...draft, disclaimer: e.target.value })} />
             </Field>
-            <Field label="Operating costs % of revenue">
-              <Input type="number" value={draft.operatingCostPct} onChange={(e) => setDraft({ ...draft, operatingCostPct: num(e.target.value) })} />
+            <Field label="Approved by">
+              <Input value={draft.approvedBy} onChange={(e) => setDraft({ ...draft, approvedBy: e.target.value })} />
             </Field>
-          </div>
-          <Field label="Disclaimer shown with every scenario">
-            <Textarea value={draft.disclaimer} onChange={(e) => setDraft({ ...draft, disclaimer: e.target.value })} />
-          </Field>
-          <Field label="Approved by">
-            <Input value={draft.approvedBy} onChange={(e) => setDraft({ ...draft, approvedBy: e.target.value })} />
-          </Field>
-          <div className="flex justify-end">
-            <Button variant="primary" onClick={() => saveAssumptions(draft)}>
-              <Save /> Save assumptions
-            </Button>
-          </div>
+            <div className="flex justify-end">
+              <Button variant="primary" onClick={() => saveAssumptions(draft)}>
+                <Save /> Save assumptions
+              </Button>
+            </div>
+          </fieldset>
         </CardBody>
       </Card>
       {sample && (
@@ -324,6 +344,7 @@ function AssumptionsEditor() {
 
 function Gaps({ onCreate }: { onCreate: (q: string) => void }) {
   const leads = useStore((s) => s.leads);
+  const canEdit = useCan("knowledge.edit");
   const gaps = leads.flatMap((l) => (l.unanswered ?? []).map((q) => ({ q, lead: l })));
   return (
     <Card>
@@ -341,9 +362,11 @@ function Gaps({ onCreate }: { onCreate: (q: string) => void }) {
                   {lead.name}
                 </Link>
               </div>
-              <Button size="sm" onClick={() => onCreate(q)}>
-                <Plus /> Create article
-              </Button>
+              {canEdit && (
+                <Button size="sm" onClick={() => onCreate(q)}>
+                  <Plus /> Create article
+                </Button>
+              )}
             </li>
           ))}
         </ul>

@@ -6,6 +6,7 @@
 import { getState, setState } from "./store";
 import { advisorLoad, isQualified, matchUnits, routeLead, scoreLead } from "./rules";
 import { stageLabel } from "./labels";
+import { assertCan, DEMO_PASSWORD } from "./permissions";
 import type {
   Advisor,
   AuditEntry,
@@ -19,6 +20,7 @@ import type {
   KbArticle,
   Unit,
   Assumptions,
+  QaIssue,
 } from "./types";
 
 export const uid = (p = "") => `${p}${crypto.randomUUID().slice(0, 8)}`;
@@ -136,6 +138,7 @@ export function optOut(leadId: string) {
 
 /** PDP Law / GDPR: erase on request. */
 export function deleteLead(leadId: string) {
+  assertCan(getState(), "lead.delete");
   setState((s) => ({
     ...s,
     leads: s.leads.filter((l) => l.id !== leadId),
@@ -257,6 +260,7 @@ export function runAutomations(at = Date.now()) {
 }
 
 export function updateSettings(patch: Partial<Settings>) {
+  assertCan(getState(), "settings");
   setState((s) => {
     const settings = { ...s.settings, ...patch };
     // Re-score every lead when the rules change.
@@ -266,6 +270,7 @@ export function updateSettings(patch: Partial<Settings>) {
 }
 
 export function saveKb(article: KbArticle) {
+  assertCan(getState(), "knowledge.edit");
   setState((s) => {
     const exists = s.kb.some((k) => k.id === article.id);
     const next = { ...article, updatedAt: nowIso() };
@@ -278,14 +283,17 @@ export function saveKb(article: KbArticle) {
 }
 
 export function deleteKb(id: string) {
+  assertCan(getState(), "knowledge.edit");
   setState((s) => ({ ...s, kb: s.kb.filter((k) => k.id !== id), audit: audit(s, "Deleted KB article") }));
 }
 
 export function saveUnit(unit: Unit) {
+  assertCan(getState(), "knowledge.edit");
   setState((s) => ({ ...s, units: s.units.map((u) => (u.id === unit.id ? unit : u)) }));
 }
 
 export function saveAssumptions(a: Assumptions) {
+  assertCan(getState(), "knowledge.edit");
   setState((s) => ({
     ...s,
     assumptions: { ...a, updatedAt: nowIso() },
@@ -294,11 +302,50 @@ export function saveAssumptions(a: Assumptions) {
 }
 
 export function saveTemplate(t: Template) {
+  assertCan(getState(), "templates.edit");
   setState((s) => ({ ...s, templates: s.templates.map((x) => (x.id === t.id ? t : x)) }));
 }
 
-export function switchUser(advisorId: string) {
-  setState((s) => ({ ...s, me: advisorId }));
+/**
+ * Prototype sign-in against the team list with a shared demo password.
+ * Production uses NGH's identity provider (e.g. Google Workspace SSO) and a
+ * server-side session. Returns an error message, or undefined on success.
+ */
+export function signIn(email: string, password: string) {
+  const user = getState().advisors.find((a) => a.email.toLowerCase() === email.trim().toLowerCase());
+  if (!user || password !== DEMO_PASSWORD) return "Email or password is incorrect.";
+  setState((s) => ({ ...s, me: user.id, audit: audit(s, "Signed in", undefined, user.name) }));
+}
+
+export function signOut() {
+  setState((s) => ({ ...s, me: "", audit: audit(s, "Signed out") }));
+}
+
+/** Weekly QA: mark one concierge answer correct or wrong (NFR accuracy). */
+export function reviewAnswer(leadId: string, messageId: string, verdict: "correct" | "wrong", issue?: QaIssue, note?: string) {
+  assertCan(getState(), "qa.review");
+  setState((s) => {
+    const review = {
+      id: uid("qa"),
+      leadId,
+      messageId,
+      verdict,
+      issue: verdict === "wrong" ? issue ?? "other" : undefined,
+      note: note?.trim() || undefined,
+      reviewer: me(s).name,
+      at: nowIso(),
+    };
+    return {
+      ...s,
+      qa: [review, ...s.qa.filter((r) => r.messageId !== messageId)],
+      audit: verdict === "wrong" ? audit(s, "QA: flagged a concierge answer as wrong", leadId) : s.audit,
+    };
+  });
+}
+
+export function clearReview(messageId: string) {
+  assertCan(getState(), "qa.review");
+  setState((s) => ({ ...s, qa: s.qa.filter((r) => r.messageId !== messageId) }));
 }
 
 export function createLead(lead: Lead) {
@@ -315,6 +362,7 @@ export function newMessage(author: Message["author"], text: string, extra?: Part
 }
 
 export function saveAdvisor(advisor: Advisor) {
+  assertCan(getState(), "settings");
   setState((s) => ({
     ...s,
     advisors: s.advisors.map((a) => (a.id === advisor.id ? advisor : a)),

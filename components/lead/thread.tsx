@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { BookOpen, FileText, Image as ImageIcon, Lock, MapPin, Video } from "lucide-react";
+import { BookOpen, FileText, Image as ImageIcon, Lock, MapPin, Mic, Video } from "lucide-react";
 import { Avatar, BotAvatar } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { clock, day } from "@/lib/format";
 import { useStore } from "@/lib/store";
+import { formatDuration } from "@/components/widget/use-voice-note";
 import type { AssetRef, Lead, Message } from "@/lib/types";
 
 const assetIcon: Record<AssetRef["kind"], typeof FileText> = {
@@ -92,6 +93,11 @@ function Bubble({ m, lead }: { m: Message; lead: Lead }) {
             m.internal && "rounded-tr-xs border border-dashed border-warning/40 bg-warning-soft text-ink",
           )}
         >
+          {m.voice && (
+            <span className="mb-1 flex items-center gap-1 text-2xs font-medium text-ink-subtle">
+              <Mic className="size-3" /> Voice note · {formatDuration(m.voice.durationSec)} · transcript
+            </span>
+          )}
           {m.text}
           {m.assets?.map((a) => <Asset key={a.id} a={a} leadId={lead.id} />)}
         </div>
