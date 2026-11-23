@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
+import { StoreGate } from "@/components/shell/store-gate";
 import "./globals.css";
 
 const inter = Inter({
@@ -26,7 +27,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${inter.variable} ${display.variable} h-full`}>
-      <body className="h-full">{children}</body>
+      <body className="h-full">
+        <StoreGate>{children}</StoreGate>
+      </body>
     </html>
   );
 }

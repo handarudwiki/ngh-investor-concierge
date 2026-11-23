@@ -238,10 +238,10 @@ function Compliance() {
         </CardBody>
       </Card>
       <Card className="self-start">
-        <CardHeader title="Demo data" description="This prototype stores data in your browser" />
+        <CardHeader title="Demo data" description="Stored in the workspace Postgres database" />
         <CardBody className="space-y-3">
           <p className="text-xs text-ink-muted">
-            In production the CRM holds this data in NGH-owned accounts. Resetting restores the sample leads, knowledge base and settings.
+            Every team member sees the same leads and conversations. Resetting restores the sample leads, knowledge base and settings for everyone.
           </p>
           <Button variant="danger" onClick={() => setConfirm(true)}>
             <RotateCcw /> Reset demo data
@@ -252,14 +252,14 @@ function Compliance() {
         open={confirm}
         onClose={() => setConfirm(false)}
         title="Reset demo data?"
-        description="All leads, conversations and edits made in this browser are replaced with the sample data."
+        description="All leads, conversations and edits in the database are replaced with the sample data, for the whole team."
         footer={
           <>
             <Button onClick={() => setConfirm(false)}>Cancel</Button>
             <Button
               variant="danger"
               onClick={() => {
-                resetDemo();
+                resetDemo().catch((e) => console.error("[settings] reset failed:", e));
                 setConfirm(false);
               }}
             >
