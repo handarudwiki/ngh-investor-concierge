@@ -4,17 +4,17 @@
 // it synchronously; each mutation updates the UI immediately, then the changed
 // records are saved in order. Other tabs refetch on save, and every tab
 // refetches on focus and every 15s, so the website widget demo and the advisor
-// inbox stay in step — across browsers too. Who is signed in (`me`) stays per
-// browser in localStorage.
+// inbox stay in step — across browsers too. Who is signed in (`me`) comes from
+// the server session cookie, and the server re-checks every write against the
+// signed-in role (lib/auth/guard.ts).
 
 import { useSyncExternalStore } from "react";
-import { diffState, type Changes, type SharedState } from "./db/changes";
+import { diffState, type Changes } from "./db/changes";
 import { SEED_NOW, seedState } from "./seed";
 import type { State } from "./types";
 
-const ME_KEY = "ngh-concierge:me";
-/** The pre-database prototype kept the whole workspace here. */
-const LEGACY_KEY = "ngh-concierge:v1";
+/** Earlier prototypes kept the workspace, then the signed-in user, here. */
+const LEGACY_KEYS = ["ngh-concierge:v1", "ngh-concierge:me"];
 const POLL_MS = 15_000;
 
 const seed = seedState(SEED_NOW);
@@ -48,23 +48,6 @@ function emit() {
   listeners.forEach((l) => l());
 }
 
-function readMe() {
-  try {
-    return window.localStorage.getItem(ME_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function writeMe(id: string) {
-  try {
-    if (id) window.localStorage.setItem(ME_KEY, id);
-    else window.localStorage.removeItem(ME_KEY);
-  } catch {
-    // Storage blocked — sign-in lasts for this tab only.
-  }
-}
-
 /** Keep unchanged records' identity so React skips re-rendering them. */
 function reuse<T extends { id: string }>(prev: T[], next: T[]): T[] {
   const old = new Map(prev.map((r) => [r.id, r]));
@@ -82,11 +65,10 @@ function same<T>(a: T, b: T) {
   return JSON.stringify(a) === JSON.stringify(b) ? a : b;
 }
 
-function adopt(shared: SharedState) {
-  const me = readMe();
+function adopt(shared: State) {
   state = {
     version: shared.version,
-    me: shared.advisors.some((a) => a.id === me) ? me : "",
+    me: shared.me,
     advisors: reuse(state.advisors, shared.advisors),
     leads: reuse(state.leads, shared.leads),
     kb: reuse(state.kb, shared.kb),
@@ -113,7 +95,7 @@ export async function refresh() {
   if (pendingWrites > 0) return;
   const gen = generation;
   try {
-    const shared: SharedState = await readJson(await fetch("/api/state", { cache: "no-store" }));
+    const shared: State = await readJson(await fetch("/api/state", { cache: "no-store" }));
     if (gen !== generation || pendingWrites > 0) return;
     adopt(shared);
   } catch (e) {
@@ -138,7 +120,8 @@ function save(changes: Changes) {
       channel?.postMessage("changed");
     })
     .catch((e) => {
-      console.error("[store] save failed, reloading the workspace:", e);
+      // Includes the server refusing a change the signed-in role can't make.
+      console.error("[store] save refused or failed, reloading the workspace:", e);
       generation++;
     })
     .finally(() => {
@@ -151,18 +134,12 @@ function start() {
   if (started) return;
   started = true;
   try {
-    window.localStorage.removeItem(LEGACY_KEY);
+    LEGACY_KEYS.forEach((k) => window.localStorage.removeItem(k));
   } catch {}
   if ("BroadcastChannel" in window) {
     channel = new BroadcastChannel("ngh-concierge");
     channel.onmessage = () => void refresh();
   }
-  window.addEventListener("storage", (e) => {
-    if (e.key !== ME_KEY || status !== "ready") return;
-    const me = readMe();
-    state = { ...state, me: state.advisors.some((a) => a.id === me) ? me : "" };
-    emit();
-  });
   window.addEventListener("focus", () => void refresh());
   setInterval(() => {
     if (document.visibilityState === "visible") void refresh();
@@ -188,18 +165,20 @@ export function setState(fn: (s: State) => State) {
   if (next === prev) return;
   state = next;
   generation++;
-  if (next.me !== prev.me) writeMe(next.me);
   emit();
   const changes = diffState(prev, next);
   if (changes) save(changes);
 }
 
-/** Restore the demo workspace in the database for everyone. */
-export async function resetDemo() {
+/**
+ * Wait for pending saves, run a server request that returns the workspace
+ * (or reload it afterwards), adopt it, and tell other tabs.
+ */
+async function exclusive(request: () => Promise<State | void>) {
   pendingWrites++;
   try {
     await writeQueue;
-    const shared: SharedState = await readJson(await fetch("/api/state/reset", { method: "POST" }));
+    const shared = (await request()) ?? ((await readJson(await fetch("/api/state", { cache: "no-store" }))) as State);
     generation++;
     pendingWrites--;
     adopt(shared);
@@ -208,6 +187,16 @@ export async function resetDemo() {
     pendingWrites--;
     throw e;
   }
+}
+
+/** Reload after the session changed (sign in or out). */
+export function reload() {
+  return exclusive(async () => {});
+}
+
+/** Restore the demo workspace in the database for everyone (admins only). */
+export function resetDemo() {
+  return exclusive(async () => readJson(await fetch("/api/state/reset", { method: "POST" })));
 }
 
 /** Loading state of the shared workspace, for the app-wide gate. */

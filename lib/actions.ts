@@ -3,10 +3,10 @@
 // Mutations on the demo store. Each one mirrors an advisor action or an
 // automation from the BRD and writes an audit entry where the NFRs ask for one.
 
-import { getState, setState } from "./store";
+import { getState, reload, setState } from "./store";
 import { advisorLoad, isQualified, matchUnits, routeLead, scoreLead } from "./rules";
 import { stageLabel } from "./labels";
-import { assertCan, DEMO_PASSWORD } from "./permissions";
+import { assertCan } from "./permissions";
 import type {
   Advisor,
   AuditEntry,
@@ -30,8 +30,8 @@ function me(s: State) {
   return s.advisors.find((a) => a.id === s.me)!;
 }
 
-function audit(s: State, action: string, leadId?: string, actor?: string): AuditEntry[] {
-  return [{ id: uid("au"), at: nowIso(), actor: actor ?? me(s).name, action, leadId }, ...s.audit];
+function audit(s: State, action: string, leadId?: string): AuditEntry[] {
+  return [{ id: uid("au"), at: nowIso(), actor: me(s).name, action, leadId }, ...s.audit];
 }
 
 function patchLead(s: State, id: string, fn: (l: Lead) => Lead): State {
@@ -307,18 +307,24 @@ export function saveTemplate(t: Template) {
 }
 
 /**
- * Prototype sign-in against the team list with a shared demo password.
- * Production uses NGH's identity provider (e.g. Google Workspace SSO) and a
- * server-side session. Returns an error message, or undefined on success.
+ * Prototype sign-in against the team list with a shared demo password; the
+ * server checks it and sets the session cookie (app/api/session). Production
+ * uses NGH's identity provider (e.g. Google Workspace SSO). Resolves to an
+ * error message, or undefined on success.
  */
-export function signIn(email: string, password: string) {
-  const user = getState().advisors.find((a) => a.email.toLowerCase() === email.trim().toLowerCase());
-  if (!user || password !== DEMO_PASSWORD) return "Email or password is incorrect.";
-  setState((s) => ({ ...s, me: user.id, audit: audit(s, "Signed in", undefined, user.name) }));
+export async function signIn(email: string, password: string): Promise<string | undefined> {
+  const res = await fetch("/api/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) return ((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Couldn't sign in.";
+  await reload();
 }
 
-export function signOut() {
-  setState((s) => ({ ...s, me: "", audit: audit(s, "Signed out") }));
+export async function signOut() {
+  await fetch("/api/session", { method: "DELETE" });
+  await reload();
 }
 
 /** Weekly QA: mark one concierge answer correct or wrong (NFR accuracy). */
