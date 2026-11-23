@@ -8,7 +8,7 @@ How the prototype maps to `BRD — NGH Investor Concierge.md`. Status as of 28 O
 
 - **All 20 functional requirements are built**: 13 Must, 6 Should and the Could (FR-05, voice notes).
 - **NFRs and guardrails** are covered in the prototype, including the weekly QA review and role-based sign-in.
-- **What remains for production** is connecting the real services: WhatsApp Cloud API, Calendly, email sending, a CRM or database in place of browser storage, an identity provider for sign-in, and a cron job for follow-ups. See [Not yet connected](#not-yet-connected).
+- **What remains for production** is connecting the real services: WhatsApp Cloud API, Calendly, email sending, NGH's CRM if it replaces the prototype's Postgres pipeline, an identity provider for sign-in, and a cron job for follow-ups. See [Not yet connected](#not-yet-connected).
 
 ## Functional requirements
 
@@ -49,8 +49,8 @@ How the prototype maps to `BRD — NGH Investor Concierge.md`. Status as of 28 O
 | Speed | ✅ | Rules engine replies instantly; Claude replies in seconds |
 | Accuracy (grounded, weekly QA of 50 conversations) | ✅ | Answers are grounded and the LLM never decides prices, scores or escalations. `/qa` samples up to 50 conversations a week; an admin marks each concierge answer correct or wrong (with the issue and a note). The "answers flagged wrong < 2%" KPI shows on the Overview, the weekly report and the QA page. `lib/qa.ts` |
 | Brand voice | ✅ | Approved copy in `i18n.ts`; design system at `/design-system` |
-| Security (encryption, role-based access, takeover audit log) | 🟡 | Sign-in at `/login`; the workspace redirects signed-out visitors. Advisors work leads; admins also get Settings, Quality review, knowledge base and template editing, and lead deletion (`lib/permissions.ts`). Sign-ins, takeovers and settings changes go to the audit log. In the prototype the checks run in the browser with a shared demo password; production needs an identity provider and server-side enforcement. Encryption depends on production hosting. |
-| Data residency and retention | 🟡 | Retention period, export and delete-on-request are built. Data lives in browser localStorage in the prototype. |
+| Security (encryption, role-based access, takeover audit log) | 🟡 | Sign-in at `/login`; the workspace redirects signed-out visitors. Advisors work leads; admins also get Settings, Quality review, knowledge base and template editing, and lead deletion (`lib/roles.ts`). The server enforces the same roles on every write (`lib/auth/guard.ts`) using a signed session cookie; website visitors can only touch the conversations they started. Sign-ins, takeovers and settings changes go to the audit log. Sign-in uses a shared demo password; production needs NGH's identity provider. Encryption depends on production hosting. |
+| Data residency and retention | 🟡 | Retention period, export and delete-on-request are built. Data lives in a Postgres database the deployment owns (Prisma); hosting it in an NGH-owned account is a deployment step. |
 | Maintainability | ✅ | KB, units, assumptions and templates editable without code; this documentation |
 | Cost control (cap, alert at 80%) | ✅ | Settings → Cost control and Overview meter; the alert is shown in-app, not sent |
 | Scalability | — | Not testable in the prototype; depends on the production CRM and hosting |
@@ -74,7 +74,7 @@ These are expected for a prototype and are listed in the README under *Prototype
 - WhatsApp Business Cloud API (needs Meta business verification)
 - Calendly booking
 - Email sending from the NGH domain
-- A real CRM or database in place of localStorage
+- NGH's own CRM or HubSpot, if chosen over the built-in Postgres pipeline (`lib/db/repo.ts` is the swap point)
 - A cron job for the follow-up scheduler
 - An identity provider (e.g. Google Workspace SSO) with server-side sessions in place of the demo password
 - Speech-to-text for WhatsApp voice notes

@@ -15,9 +15,9 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string>();
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const failed = signIn(email, password);
+    const failed = await signIn(email, password);
     if (failed) return setError(failed);
     // Only follow same-site paths back into the workspace.
     const next = new URLSearchParams(window.location.search).get("next");

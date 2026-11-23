@@ -143,8 +143,7 @@ export function Sidebar() {
           </span>
           <button
             onClick={() => {
-              signOut();
-              router.replace("/login");
+              void signOut().finally(() => router.replace("/login"));
             }}
             title="Sign out"
             aria-label="Sign out"

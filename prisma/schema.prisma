@@ -1,0 +1,325 @@
+// NGH Investor Concierge — Postgres schema. Field names follow the BRD's
+// "Lead record (minimum fields)" list and mirror lib/types.ts; lib/db/mapper.ts
+// converts between these rows and the app's domain types.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Language {
+  en
+  id
+  nl
+  ru
+  es
+}
+
+enum Channel {
+  whatsapp
+  web
+}
+
+enum Source {
+  whatsapp_ad
+  website
+  referral
+  social
+  direct
+}
+
+enum Score {
+  hot
+  warm
+  cold
+}
+
+enum Stage {
+  new
+  qualified
+  call_booked
+  site_visit
+  reservation
+  won
+  lost
+}
+
+enum Purpose {
+  live
+  rent_out
+  hold
+}
+
+enum Ownership {
+  leasehold
+  freehold_pt_pma
+  undecided
+}
+
+enum Financing {
+  cash
+  mortgage
+  undecided
+}
+
+enum Consent {
+  granted
+  pending
+  withdrawn
+}
+
+enum LeadMode {
+  bot
+  human
+}
+
+enum Role {
+  advisor
+  admin
+}
+
+enum MessageAuthor {
+  lead
+  bot
+  advisor
+  system
+}
+
+enum KbCategory {
+  project
+  ownership
+  process
+  pricing
+  investment
+  visit
+  company
+}
+
+enum UnitType {
+  Apartment
+  Villa
+}
+
+enum UnitStatus {
+  available
+  reserved
+  sold
+}
+
+enum TemplateKind {
+  day1
+  day3
+  day7
+  day14
+  reminder24
+  reminder1
+}
+
+enum TemplateChannel {
+  whatsapp
+  email
+}
+
+enum QaVerdict {
+  correct
+  wrong
+}
+
+enum QaIssue {
+  wrong_fact
+  should_escalate
+  off_brand
+  wrong_language
+  other
+}
+
+/// Sales team member (sales partner, sales advisors) or admin.
+model Advisor {
+  /// Display order (seed order, then creation order).
+  seq         Int        @default(autoincrement())
+  id          String     @id
+  name        String
+  title       String
+  languages   Language[]
+  projects    String[]
+  /// Sales partner gets Hot leads first.
+  senior      Boolean    @default(false)
+  calendlyUrl String     @default("")
+  email       String     @unique
+  role        Role       @default(advisor)
+
+  leads    Lead[]
+  bookings Booking[]
+  messages Message[]
+}
+
+model Lead {
+  id               String     @id
+  name             String
+  country          String
+  language         Language
+  timezone         String
+  phone            String?
+  email            String?
+  channel          Channel
+  source           Source
+  sourceDetail     String?
+  project          String
+  /// "<250k" | "250-500k" | "500k-1m" | "1m+"
+  budget           String?
+  /// "0-3m" | "3-6m" | "6-12m" | "12m+"
+  timeline         String?
+  purpose          Purpose?
+  ownership        Ownership?
+  financing        Financing?
+  score            Score
+  stage            Stage      @default(new)
+  advisorId        String?
+  advisor          Advisor?   @relation(fields: [advisorId], references: [id], onDelete: SetNull)
+  consent          Consent    @default(pending)
+  optedOut         Boolean    @default(false)
+  /// "human" after takeover — the concierge stays silent (FR-17).
+  mode             LeadMode   @default(bot)
+  /// Why the concierge escalated, if it did (FR-13).
+  escalation       String?
+  createdAt        DateTime
+  lastMessageAt    DateTime
+  unread           Int        @default(0)
+  /// Topics the lead asked about, for the advisor summary (FR-14).
+  topics           String[]
+  objections       String[]
+  /// Questions the concierge couldn't answer from the KB (FR-03, FR-20).
+  unanswered       String[]
+  briefGeneratedAt DateTime?
+  unitIds          String[]
+  /// Follow-up sequence position (FR-15). 0 = not started.
+  followUpStep     Int        @default(0)
+  nextFollowUp     DateTime?
+  lostReason       String?
+  starred          Boolean    @default(false)
+
+  messages Message[]
+  booking  Booking?
+
+  @@index([stage])
+  @@index([advisorId])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id               String        @id
+  leadId           String
+  lead             Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  /// Order within the conversation.
+  position         Int
+  author           MessageAuthor
+  advisorId        String?
+  advisor          Advisor?      @relation(fields: [advisorId], references: [id], onDelete: SetNull)
+  text             String
+  at               DateTime
+  /// Internal advisor note — never sent to the lead.
+  internal         Boolean       @default(false)
+  /// Approved assets shared in the message (FR-04).
+  assets           Json?
+  /// KB article / template ids the bot grounded its answer in (FR-03).
+  sources          String[]
+  /// Lead sent a voice note; `text` holds its transcript (FR-05).
+  voiceDurationSec Int?
+
+  @@index([leadId, position])
+}
+
+/// Calendly booking (FR-11) and reminder state (FR-16).
+model Booking {
+  leadId        String   @id
+  lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  at            DateTime
+  advisorId     String
+  advisor       Advisor  @relation(fields: [advisorId], references: [id])
+  timezone      String
+  remindersSent String[]
+}
+
+model KbArticle {
+  /// Display order (seed order, then creation order).
+  seq       Int        @default(autoincrement())
+  id        String     @id
+  category  KbCategory
+  title     String
+  keywords  String[]
+  /// Body per language: { en, id, nl, ru, es }.
+  body      Json
+  /// Compliance reviewer sign-off for ownership/legal wording.
+  approved  Boolean    @default(false)
+  /// Questions in this area hand off to a human (FR-13).
+  escalate  Boolean    @default(false)
+  owner     String
+  updatedAt DateTime
+}
+
+model Unit {
+  /// Display order (seed order, then creation order).
+  seq        Int        @default(autoincrement())
+  id         String     @id
+  project    String
+  name       String
+  type       UnitType
+  bedrooms   Int
+  sizeSqm    Int
+  priceUsd   Int
+  leaseYears Int
+  status     UnitStatus
+  handover   String
+  /// Indicative average daily rate used in scenarios.
+  adrUsd     Int
+}
+
+model Template {
+  /// Display order (seed order, then creation order).
+  seq          Int             @default(autoincrement())
+  id           String          @id
+  kind         TemplateKind
+  name         String
+  channel      TemplateChannel
+  /// Body per language: { en, id, nl, ru, es }.
+  body         Json
+  /// WhatsApp templates outside the 24h window need Meta approval.
+  metaApproved Boolean         @default(false)
+  active       Boolean         @default(true)
+}
+
+model AuditEntry {
+  id     String   @id
+  at     DateTime
+  actor  String
+  action String
+  leadId String?
+
+  @@index([at])
+}
+
+/// One concierge answer checked in the weekly QA review (NFR accuracy).
+model QaReview {
+  id        String    @id
+  leadId    String
+  messageId String    @unique
+  verdict   QaVerdict
+  issue     QaIssue?
+  note      String?
+  reviewer  String
+  at        DateTime
+}
+
+/// Single-row app configuration: settings (scoring rules, cost cap, hours,
+/// retention) and the approved scenario assumptions.
+model AppConfig {
+  id          Int      @id @default(1)
+  version     Int
+  settings    Json
+  assumptions Json
+  updatedAt   DateTime @updatedAt
+}
